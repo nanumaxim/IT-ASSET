@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบทะเบียนอุปกรณ์ไอที</title>
+<style>
+  body {
+    font-family: "Tahoma", "Sarabun", sans-serif;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f5f5f5;
+    color: #222;
+  }
+
+  h1 {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    font-size: 18px;
+    margin-top: 30px;
+  }
+
+  form {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-field label {
+    font-size: 14px;
+    margin-bottom: 4px;
+    font-weight: bold;
+  }
+
+  .form-field input,
+  .form-field select {
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  .form-actions {
+    grid-column: 1 / -1;
+  }
+
+  button {
+    padding: 10px 20px;
+    font-size: 14px;
+    background-color: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background-color: #1d4ed8;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    background: #fff;
+  }
+
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+    font-size: 14px;
+  }
+
+  th {
+    background-color: #e5e7eb;
+  }
+
+  .empty-row td {
+    text-align: center;
+    color: #888;
+    padding: 20px;
+  }
+</style>
+</head>
+<body>
+
+  <h1>ระบบทะเบียนอุปกรณ์ไอที</h1>
+
+  <h2>เพิ่มอุปกรณ์ใหม่</h2>
+  <form id="asset-form">
+    <div class="form-field">
+      <label for="asset-name">ชื่ออุปกรณ์</label>
+      <input type="text" id="asset-name" placeholder="เช่น Dell Latitude 5420" required>
+    </div>
+
+    <div class="form-field">
+      <label for="asset-type">ประเภท</label>
+      <select id="asset-type" required>
+        <option value="">-- เลือกประเภท --</option>
+        <option value="โน้ตบุ๊ก">โน้ตบุ๊ก</option>
+        <option value="จอ">จอ</option>
+        <option value="เครื่องพิมพ์">เครื่องพิมพ์</option>
+        <option value="สวิตช์">สวิตช์</option>
+        <option value="กล้องวงจรปิด">กล้องวงจรปิด</option>
+        <option value="อื่นๆ">อื่นๆ</option>
+      </select>
+    </div>
+
+    <div class="form-field">
+      <label for="asset-serial">หมายเลขเครื่อง</label>
+      <input type="text" id="asset-serial" placeholder="เช่น SN-12345">
+    </div>
+
+    <div class="form-field">
+      <label for="asset-owner">ผู้ถือครอง</label>
+      <input type="text" id="asset-owner" placeholder="เช่น สมชาย ใจดี">
+    </div>
+
+    <div class="form-field">
+      <label for="asset-status">สถานะ</label>
+      <select id="asset-status" required>
+        <option value="">-- เลือกสถานะ --</option>
+        <option value="ใช้งาน">ใช้งาน</option>
+        <option value="ซ่อม">ซ่อม</option>
+        <option value="เลิกใช้">เลิกใช้</option>
+        <option value="สำรอง">สำรอง</option>
+      </select>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit">บันทึก</button>
+    </div>
+  </form>
+
+  <h2>รายการอุปกรณ์ทั้งหมด</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ชื่ออุปกรณ์</th>
+        <th>ประเภท</th>
+        <th>หมายเลขเครื่อง</th>
+        <th>ผู้ถือครอง</th>
+        <th>สถานะ</th>
+      </tr>
+    </thead>
+    <tbody id="asset-table-body">
+    </tbody>
+  </table>
+
+<script>
+  const STORAGE_KEY = "it-asset-registry";
+
+  let assets = loadAssets();
+
+  function loadAssets() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveAssets() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById("asset-table-body");
+    tbody.innerHTML = "";
+
+    if (assets.length === 0) {
+      const emptyRow = document.createElement("tr");
+      emptyRow.className = "empty-row";
+      emptyRow.innerHTML = `<td colspan="5">ยังไม่มีข้อมูลอุปกรณ์</td>`;
+      tbody.appendChild(emptyRow);
+      return;
+    }
+
+    assets.forEach(function (asset) {
+      const row = document.createElement("tr");
+      row.innerHTML =
+        "<td>" + escapeHtml(asset.name) + "</td>" +
+        "<td>" + escapeHtml(asset.type) + "</td>" +
+        "<td>" + escapeHtml(asset.serial) + "</td>" +
+        "<td>" + escapeHtml(asset.owner) + "</td>" +
+        "<td>" + escapeHtml(asset.status) + "</td>";
+      tbody.appendChild(row);
+    });
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text || "";
+    return div.innerHTML;
+  }
+
+  document.getElementById("asset-form").addEventListener("submit", function (event) {
+    event.preventDefault();
+
+    const name = document.getElementById("asset-name").value.trim();
+    const type = document.getElementById("asset-type").value;
+    const serial = document.getElementById("asset-serial").value.trim();
+    const owner = document.getElementById("asset-owner").value.trim();
+    const status = document.getElementById("asset-status").value;
+
+    if (!name || !type || !status) {
+      alert("กรุณากรอกชื่ออุปกรณ์ ประเภท และสถานะให้ครบ");
+      return;
+    }
+
+    const newAsset = {
+      id: "asset-" + Date.now(),
+      name: name,
+      type: type,
+      serial: serial,
+      owner: owner,
+      status: status,
+      updatedAt: new Date().toISOString()
+    };
+
+    assets.push(newAsset);
+    saveAssets();
+    renderTable();
+    event.target.reset();
+  });
+
+  renderTable();
+</script>
+
+</body>
+</html>
