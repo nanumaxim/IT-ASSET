@@ -94,6 +94,44 @@
     color: #888;
     padding: 20px;
   }
+
+  .filter-bar {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 16px;
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+  }
+
+  .filter-field {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 180px;
+  }
+
+  .filter-field label {
+    font-size: 14px;
+    margin-bottom: 4px;
+    font-weight: bold;
+  }
+
+  .filter-field input,
+  .filter-field select {
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+
+  .result-count {
+    font-size: 14px;
+    color: #555;
+    margin-top: 8px;
+  }
 </style>
 </head>
 <body>
@@ -147,6 +185,40 @@
   </form>
 
   <h2>รายการอุปกรณ์ทั้งหมด</h2>
+
+  <div class="filter-bar">
+    <div class="filter-field">
+      <label for="search-input">ค้นหา</label>
+      <input type="text" id="search-input" placeholder="ค้นหาชื่ออุปกรณ์ / หมายเลขเครื่อง / ผู้ถือครอง">
+    </div>
+
+    <div class="filter-field">
+      <label for="filter-type">กรองตามประเภท</label>
+      <select id="filter-type">
+        <option value="">-- ทั้งหมด --</option>
+        <option value="โน้ตบุ๊ก">โน้ตบุ๊ก</option>
+        <option value="จอ">จอ</option>
+        <option value="เครื่องพิมพ์">เครื่องพิมพ์</option>
+        <option value="สวิตช์">สวิตช์</option>
+        <option value="กล้องวงจรปิด">กล้องวงจรปิด</option>
+        <option value="อื่นๆ">อื่นๆ</option>
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="filter-status">กรองตามสถานะ</label>
+      <select id="filter-status">
+        <option value="">-- ทั้งหมด --</option>
+        <option value="ใช้งาน">ใช้งาน</option>
+        <option value="ซ่อม">ซ่อม</option>
+        <option value="เลิกใช้">เลิกใช้</option>
+        <option value="สำรอง">สำรอง</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="result-count" id="result-count"></div>
+
   <table>
     <thead>
       <tr>
@@ -180,9 +252,36 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
   }
 
+  function getFilteredAssets() {
+    const keyword = document.getElementById("search-input").value.trim().toLowerCase();
+    const typeFilter = document.getElementById("filter-type").value;
+    const statusFilter = document.getElementById("filter-status").value;
+
+    return assets.filter(function (asset) {
+      const matchesKeyword =
+        !keyword ||
+        (asset.name || "").toLowerCase().includes(keyword) ||
+        (asset.serial || "").toLowerCase().includes(keyword) ||
+        (asset.owner || "").toLowerCase().includes(keyword);
+
+      const matchesType = !typeFilter || asset.type === typeFilter;
+      const matchesStatus = !statusFilter || asset.status === statusFilter;
+
+      return matchesKeyword && matchesType && matchesStatus;
+    });
+  }
+
+  function updateResultCount(filteredCount, totalCount) {
+    const resultCount = document.getElementById("result-count");
+    resultCount.textContent = "พบ " + filteredCount + " จาก " + totalCount + " รายการ";
+  }
+
   function renderTable() {
     const tbody = document.getElementById("asset-table-body");
     tbody.innerHTML = "";
+
+    const filteredAssets = getFilteredAssets();
+    updateResultCount(filteredAssets.length, assets.length);
 
     if (assets.length === 0) {
       const emptyRow = document.createElement("tr");
@@ -192,7 +291,15 @@
       return;
     }
 
-    assets.forEach(function (asset) {
+    if (filteredAssets.length === 0) {
+      const noResultRow = document.createElement("tr");
+      noResultRow.className = "empty-row";
+      noResultRow.innerHTML = `<td colspan="5">ไม่พบข้อมูลที่ตรงกับการค้นหา</td>`;
+      tbody.appendChild(noResultRow);
+      return;
+    }
+
+    filteredAssets.forEach(function (asset) {
       const row = document.createElement("tr");
       row.innerHTML =
         "<td>" + escapeHtml(asset.name) + "</td>" +
@@ -239,6 +346,10 @@
     renderTable();
     event.target.reset();
   });
+
+  document.getElementById("search-input").addEventListener("input", renderTable);
+  document.getElementById("filter-type").addEventListener("change", renderTable);
+  document.getElementById("filter-status").addEventListener("change", renderTable);
 
   renderTable();
 </script>
