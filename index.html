@@ -180,7 +180,8 @@
     </div>
 
     <div class="form-actions">
-      <button type="submit">บันทึก</button>
+      <button type="submit" id="asset-form-submit-btn">บันทึก</button>
+      <button type="button" id="asset-form-cancel-btn" style="display:none; background-color:#6b7280; margin-left:8px;">ยกเลิก</button>
     </div>
   </form>
 
@@ -222,11 +223,13 @@
   <table>
     <thead>
       <tr>
+        <th>Asset ID</th>
         <th>ชื่ออุปกรณ์</th>
         <th>ประเภท</th>
         <th>หมายเลขเครื่อง</th>
         <th>ผู้ถือครอง</th>
         <th>สถานะ</th>
+        <th>จัดการ</th>
       </tr>
     </thead>
     <tbody id="asset-table-body">
@@ -286,7 +289,7 @@
     if (assets.length === 0) {
       const emptyRow = document.createElement("tr");
       emptyRow.className = "empty-row";
-      emptyRow.innerHTML = `<td colspan="5">ยังไม่มีข้อมูลอุปกรณ์</td>`;
+      emptyRow.innerHTML = `<td colspan="7">ยังไม่มีข้อมูลอุปกรณ์</td>`;
       tbody.appendChild(emptyRow);
       return;
     }
@@ -302,11 +305,38 @@
     filteredAssets.forEach(function (asset) {
       const row = document.createElement("tr");
       row.innerHTML =
+        "<td>" + escapeHtml(asset.id) + "</td>" +
         "<td>" + escapeHtml(asset.name) + "</td>" +
         "<td>" + escapeHtml(asset.type) + "</td>" +
         "<td>" + escapeHtml(asset.serial) + "</td>" +
         "<td>" + escapeHtml(asset.owner) + "</td>" +
-        "<td>" + escapeHtml(asset.status) + "</td>";
+        "<td>" + escapeHtml(asset.status) + "</td>" +
+        "<td></td>";
+
+      const actionCell = row.lastElementChild;
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.title = "แก้ไข";
+      editBtn.textContent = "✏️";
+      editBtn.style.marginRight = "6px";
+      editBtn.style.backgroundColor = "#eab308";
+      editBtn.addEventListener("click", function () {
+        startEditAsset(asset.id);
+      });
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.title = "ลบ";
+      deleteBtn.textContent = "🗑️";
+      deleteBtn.style.backgroundColor = "#dc2626";
+      deleteBtn.addEventListener("click", function () {
+        deleteAsset(asset.id);
+      });
+
+      actionCell.appendChild(editBtn);
+      actionCell.appendChild(deleteBtn);
+
       tbody.appendChild(row);
     });
   }
@@ -316,6 +346,52 @@
     div.textContent = text || "";
     return div.innerHTML;
   }
+
+  let editingId = null;
+
+  function startEditAsset(id) {
+    const asset = assets.find(function (a) { return a.id === id; });
+    if (!asset) return;
+
+    editingId = id;
+
+    document.getElementById("asset-name").value = asset.name;
+    document.getElementById("asset-type").value = asset.type;
+    document.getElementById("asset-serial").value = asset.serial;
+    document.getElementById("asset-owner").value = asset.owner;
+    document.getElementById("asset-status").value = asset.status;
+
+    document.getElementById("asset-form-submit-btn").textContent = "บันทึกการแก้ไข";
+    document.getElementById("asset-form-cancel-btn").style.display = "";
+
+    document.getElementById("asset-form").scrollIntoView({ behavior: "smooth" });
+  }
+
+  function cancelEdit() {
+    editingId = null;
+    document.getElementById("asset-form").reset();
+    document.getElementById("asset-form-submit-btn").textContent = "บันทึก";
+    document.getElementById("asset-form-cancel-btn").style.display = "none";
+  }
+
+  function deleteAsset(id) {
+    const asset = assets.find(function (a) { return a.id === id; });
+    if (!asset) return;
+
+    const confirmed = confirm("ยืนยันการลบอุปกรณ์ \"" + asset.name + "\" ใช่หรือไม่?");
+    if (!confirmed) return;
+
+    assets = assets.filter(function (a) { return a.id !== id; });
+    saveAssets();
+
+    if (editingId === id) {
+      cancelEdit();
+    }
+
+    renderTable();
+  }
+
+  document.getElementById("asset-form-cancel-btn").addEventListener("click", cancelEdit);
 
   document.getElementById("asset-form").addEventListener("submit", function (event) {
     event.preventDefault();
@@ -328,6 +404,22 @@
 
     if (!name || !type || !status) {
       alert("กรุณากรอกชื่ออุปกรณ์ ประเภท และสถานะให้ครบ");
+      return;
+    }
+
+    if (editingId) {
+      const asset = assets.find(function (a) { return a.id === editingId; });
+      if (asset) {
+        asset.name = name;
+        asset.type = type;
+        asset.serial = serial;
+        asset.owner = owner;
+        asset.status = status;
+        asset.updatedAt = new Date().toISOString();
+      }
+      saveAssets();
+      renderTable();
+      cancelEdit();
       return;
     }
 
